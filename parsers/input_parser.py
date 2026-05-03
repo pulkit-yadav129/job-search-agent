@@ -5,14 +5,14 @@ Uses an LLM to extract a structured job-seeker profile from any free-form input.
 
 import json
 from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate  # ✅ FIXED
+
 
 PROFILE_EXTRACTION_PROMPT = """
 You are a career advisor AI. Extract a structured job seeker profile from the input below.
 Return ONLY valid JSON — no markdown, no explanation — with exactly these keys:
 
-{{
+{
   "job_titles": ["list of desired or relevant job titles"],
   "skills": ["list of technical and soft skills"],
   "experience_years": <integer or null>,
@@ -22,7 +22,7 @@ Return ONLY valid JSON — no markdown, no explanation — with exactly these ke
   "seniority": "<entry/mid/senior/executive or null>",
   "job_type": "<full-time/part-time/remote/contract or null>",
   "summary": "<2-sentence professional summary>"
-}}
+}
 
 Input:
 {user_input}
@@ -32,13 +32,14 @@ JSON:
 
 
 def extract_profile(user_input: str, llm: ChatOpenAI) -> dict:
+    """Extract structured profile dict from raw user input."""
+
     prompt = PromptTemplate(
         input_variables=["user_input"],
         template=PROFILE_EXTRACTION_PROMPT
     )
 
-    # ❌ removed LLMChain
-    # ✅ LCEL
+    # ✅ FIX: replaced LLMChain
     chain = prompt | llm
 
     response = chain.invoke({"user_input": user_input})
@@ -51,5 +52,5 @@ def extract_profile(user_input: str, llm: ChatOpenAI) -> dict:
 
     try:
         return json.loads(raw)
-    except:
+    except json.JSONDecodeError:
         return {"raw_extraction": raw, "summary": user_input[:300]}
