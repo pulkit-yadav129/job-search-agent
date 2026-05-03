@@ -1,18 +1,11 @@
 """
 tools.py
 LangChain @tool definitions for all job board integrations.
-Sources: Google Jobs (SerpAPI), JSearch (LinkedIn/Indeed/Glassdoor),
-         Naukri (RapidAPI), LinkedIn Jobs (RapidAPI).
 """
 
 import os
 import requests
 from langchain.tools import tool
-
-SERPAPI_KEY        = os.getenv("SERPAPI_KEY", "")
-JSEARCH_KEY        = os.getenv("JSEARCH_RAPIDAPI_KEY", "")
-NAUKRI_KEY         = os.getenv("NAUKRI_RAPIDAPI_KEY", "")
-LINKEDIN_KEY       = os.getenv("LINKEDIN_RAPIDAPI_KEY", "")
 
 
 # ── Helper ──────────────────────────────────────────────────────────
@@ -26,51 +19,58 @@ def _safe_get(url: str, params: dict = None, headers: dict = None) -> dict:
         return {"error": str(e)}
 
 
-# ── Tool 1: Google Jobs via SerpAPI ─────────────────────────────────
+def _safe_slice(val, length=250):
+    if not isinstance(val, str):
+        return ""
+    return val[:length]
+
+
+# ── Tool 1: Google Jobs ─────────────────────────────────────────────
 
 @tool
 def search_google_jobs(query: str) -> str:
-    """
-    Search Google Jobs via SerpAPI.
-    Input: a job search query string, e.g. 'Senior Python Developer remote'.
-    Returns formatted job listings.
-    """
+    """Search Google Jobs via SerpAPI using a query string."""
+    SERPAPI_KEY = os.getenv("SERPAPI_KEY")
+
     if not SERPAPI_KEY:
-        return "SerpAPI key not configured."
+        raise ValueError("SerpAPI key not configured.")
 
     data = _safe_get(
         "https://serpapi.com/search",
         params={"engine": "google_jobs", "q": query, "api_key": SERPAPI_KEY, "num": 10}
     )
+
     jobs = data.get("jobs_results", [])
     if not jobs:
         return f"No Google Jobs results for: {query}"
 
     out = []
     for j in jobs[:8]:
-        ext = j.get("detected_extensions", {})
+        ext = j.get("detected_extensions", {}) or {}
         link = (j.get("related_links") or [{}])[0].get("link", "N/A")
+
+        desc = _safe_slice(j.get("description"))
+
         out.append(
-            f"[Google Jobs] **{j.get('title')}** @ {j.get('company_name')}\n"
-            f"📍 {j.get('location')} | Posted: {ext.get('posted_at','N/A')} | "
+            f"[Google Jobs] **{j.get('title','N/A')}** @ {j.get('company_name','N/A')}\n"
+            f"📍 {j.get('location','N/A')} | Posted: {ext.get('posted_at','N/A')} | "
             f"Type: {ext.get('schedule_type','N/A')}\n"
             f"🔗 {link}\n"
-            f"📝 {j.get('description','')[:250]}...\n"
+            f"📝 {desc}...\n"
         )
+
     return "\n---\n".join(out)
 
 
-# ── Tool 2: JSearch — LinkedIn / Indeed / Glassdoor ─────────────────
+# ── Tool 2: JSearch ────────────────────────────────────────────────
 
 @tool
 def search_jsearch(query: str) -> str:
-    """
-    Search jobs aggregated from LinkedIn, Indeed, and Glassdoor via JSearch (RapidAPI).
-    Input: a job search query string, e.g. 'Data Scientist New York'.
-    Returns formatted job listings.
-    """
+    """Search jobs from LinkedIn, Indeed, Glassdoor via JSearch (RapidAPI)."""
+    JSEARCH_KEY = os.getenv("JSEARCH_RAPIDAPI_KEY")
+
     if not JSEARCH_KEY:
-        return "JSearch RapidAPI key not configured."
+        raise ValueError("JSearch RapidAPI key not configured.")
 
     data = _safe_get(
         "https://jsearch.p.rapidapi.com/search",
@@ -80,72 +80,44 @@ def search_jsearch(query: str) -> str:
             "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
         }
     )
+
     jobs = data.get("data", [])
     if not jobs:
         return f"No JSearch results for: {query}"
 
     out = []
     for j in jobs[:8]:
-        remote = "🌐 Remote" if j.get("job_is_remote") else f"📍 {j.get('job_city','')}, {j.get('job_country','')}"
+        remote = (
+            "🌐 Remote"
+            if j.get("job_is_remote")
+            else f"📍 {j.get('job_city','')}, {j.get('job_country','')}"
+        )
+
+        # ✅ SAFE DATE HANDLING (fixes your crash)
+        posted = j.get("job_posted_at_datetime_utc") or "N/A"
+        posted = posted[:10] if isinstance(posted, str) else "N/A"
+
+        desc = _safe_slice(j.get("job_description"))
+
         out.append(
-            f"[{j.get('job_publisher','JSearch')}] **{j.get('job_title')}** @ {j.get('employer_name')}\n"
-            f"{remote} | Posted: {j.get('job_posted_at_datetime_utc','N/A')[:10]}\n"
+            f"[{j.get('job_publisher','JSearch')}] **{j.get('job_title','N/A')}** @ {j.get('employer_name','N/A')}\n"
+            f"{remote} | Posted: {posted}\n"
             f"🔗 {j.get('job_apply_link','N/A')}\n"
-            f"📝 {j.get('job_description','')[:250]}...\n"
+            f"📝 {desc}...\n"
         )
+
     return "\n---\n".join(out)
 
 
-# ── Tool 3: Naukri via RapidAPI ──────────────────────────────────────
-
-@tool
-def search_naukri(query: str) -> str:
-    """
-    Search Naukri.com jobs via RapidAPI.
-    Best for India-based job searches.
-    Input: job search query, e.g. 'React Developer Bangalore'.
-    """
-    if not NAUKRI_KEY:
-        return "Naukri RapidAPI key not configured."
-
-    # RapidAPI Naukri endpoint (naukri-com1.p.rapidapi.com)
-    data = _safe_get(
-        "https://naukri-com1.p.rapidapi.com/search",
-        params={"keyword": query, "location": "", "experience": ""},
-        headers={
-            "X-RapidAPI-Key": NAUKRI_KEY,
-            "X-RapidAPI-Host": "naukri-com1.p.rapidapi.com"
-        }
-    )
-
-    jobs = data.get("jobDetails", data.get("data", []))
-    if not jobs:
-        return f"No Naukri results for: {query}"
-
-    out = []
-    for j in jobs[:8]:
-        out.append(
-            f"[Naukri] **{j.get('title', j.get('jobTitle', 'N/A'))}** "
-            f"@ {j.get('companyName', 'N/A')}\n"
-            f"📍 {j.get('location', 'N/A')} | "
-            f"Exp: {j.get('experience', 'N/A')} | "
-            f"Salary: {j.get('salary', 'Not disclosed')}\n"
-            f"🔗 {j.get('jdURL', j.get('applyLink', 'N/A'))}\n"
-            f"📝 {str(j.get('jobDescription', j.get('description', '')))[:250]}...\n"
-        )
-    return "\n---\n".join(out)
-
-
-# ── Tool 4: LinkedIn Jobs via RapidAPI ───────────────────────────────
+# ── Tool 3: LinkedIn ───────────────────────────────────────────────
 
 @tool
 def search_linkedin_jobs(query: str) -> str:
-    """
-    Search LinkedIn Jobs via RapidAPI (linkedin-jobs-search.p.rapidapi.com).
-    Input: a job search query, e.g. 'Machine Learning Engineer London'.
-    """
+    """Search LinkedIn Jobs via RapidAPI using a query string."""
+    LINKEDIN_KEY = os.getenv("LINKEDIN_RAPIDAPI_KEY")
+
     if not LINKEDIN_KEY:
-        return "LinkedIn RapidAPI key not configured."
+        raise ValueError("LinkedIn RapidAPI key not configured.")
 
     data = _safe_get(
         "https://linkedin-jobs-search.p.rapidapi.com/",
@@ -160,23 +132,26 @@ def search_linkedin_jobs(query: str) -> str:
         }
     )
 
-    # Response is a list directly
     jobs = data if isinstance(data, list) else data.get("data", [])
     if not jobs:
         return f"No LinkedIn results for: {query}"
 
     out = []
     for j in jobs[:8]:
+        desc = _safe_slice(j.get("job_description"))
+
         out.append(
             f"[LinkedIn] **{j.get('job_title', 'N/A')}** @ {j.get('company_name', 'N/A')}\n"
             f"📍 {j.get('job_location', 'N/A')} | "
             f"Type: {j.get('job_type', 'N/A')} | "
             f"Posted: {j.get('posted_date', 'N/A')}\n"
             f"🔗 {j.get('linkedin_job_url_cleaned', j.get('job_url', 'N/A'))}\n"
-            f"📝 {str(j.get('job_description', ''))[:250]}...\n"
+            f"📝 {desc}...\n"
         )
+
     return "\n---\n".join(out)
 
 
-# ── All tools list ───────────────────────────────────────────────────
-ALL_TOOLS = [search_google_jobs, search_jsearch, search_naukri, search_linkedin_jobs]
+# ── All tools ──────────────────────────────────────────────────────
+
+ALL_TOOLS = [search_google_jobs, search_jsearch, search_linkedin_jobs]

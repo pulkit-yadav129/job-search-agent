@@ -13,7 +13,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-
 from agent.prompts import ATS_SCORE_PROMPT
 
 

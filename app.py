@@ -9,7 +9,9 @@ Features:
   ✅ Email alerts (immediate + scheduled)
   ✅ LangSmith tracing dashboard link
 """
+from dotenv import load_dotenv
 
+load_dotenv()
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -23,9 +25,6 @@ from ats.scorer import quick_ats_score, deep_ats_analysis, score_colour
 from cover_letter.generator import generate_cover_letter, format_cover_letter_docx
 from alerts.email_alerts import send_job_alert, alert_scheduler
 from utils.formatters import score_gauge, keyword_badges, profile_summary_card
-
-load_dotenv()
-
 # ════════════════════════════════════════════════════════════════════
 # Page config
 # ════════════════════════════════════════════════════════════════════
@@ -188,7 +187,10 @@ with tab1:
 
         with st.spinner("🔎 Searching jobs across Google, LinkedIn, Indeed, Naukri..."):
             executor, tracing = build_agent(profile)
-            result = executor.invoke({"input": "Find the best matching jobs for this user profile."})
+            result = executor.invoke({
+                "input": "Find the best matching jobs for the user profile",
+                "profile": profile
+            })
             st.session_state.jobs_output = result.get("output", "")
 
         st.markdown("### ✅ Top Job Matches")
