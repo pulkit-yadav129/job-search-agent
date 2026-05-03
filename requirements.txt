@@ -2,7 +2,7 @@
 streamlit>=1.33.0
 python-dotenv>=1.0.0
 
-# LangChain (PINNED — CRITICAL FIX)
+# LangChain (PINNED — CRIL FIX)
 langchain==0.1.17
 langchain-openai==0.0.8
 langchain-community==0.0.38
