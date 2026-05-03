@@ -6,7 +6,7 @@ python-dotenv>=1.0.0
 langchain==0.1.17
 langchain-openai==0.0.8
 langchain-community==0.0.38
-langsmith>=0.1.17,<0.2.0
+langsmith==0.1.17
 openai==1.10.0
 
 # Resume Parsing
@@ -29,3 +29,5 @@ spacy>=3.7.0
 # Utilities
 pandas>=2.2.0
 plotly>=5.20.0
+
+httpx==0.24.1
