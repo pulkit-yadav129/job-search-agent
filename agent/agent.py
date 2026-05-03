@@ -6,9 +6,8 @@ Builds and returns the LangChain job-search AgentExecutor with LangSmith tracing
 import os
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_openai_tools_agent
-from langchain.agents.agent import AgentExecutor
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder  # ✅ FIXED
-
+from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from integrations.tools import ALL_TOOLS
 from agent.prompts import JOB_SEARCH_SYSTEM_PROMPT
 
