@@ -5,8 +5,8 @@ Uses an LLM to extract a structured job-seeker profile from any free-form input.
 
 import json
 from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate  # ✅ updated import
+
 
 PROFILE_EXTRACTION_PROMPT = """
 You are a career advisor AI. Extract a structured job seeker profile from the input below.
@@ -33,14 +33,24 @@ JSON:
 
 def extract_profile(user_input: str, llm: ChatOpenAI) -> dict:
     """Extract structured profile dict from raw user input."""
+
+    # ✅ same prompt, just new import
     prompt = PromptTemplate(
         input_variables=["user_input"],
         template=PROFILE_EXTRACTION_PROMPT
     )
-    chain = LLMChain(llm=llm, prompt=prompt)
-    raw = chain.run(user_input=user_input).strip()
 
-    # Strip markdown code fences if present
+    # ❌ removed LLMChain
+    # ✅ replaced with LCEL
+    chain = prompt | llm
+
+    # ❌ removed .run()
+    # ✅ replaced with .invoke()
+    response = chain.invoke({"user_input": user_input})
+
+    raw = response.content.strip()
+
+    # Strip markdown code fences if present (unchanged)
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):

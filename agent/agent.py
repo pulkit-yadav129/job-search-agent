@@ -6,14 +6,14 @@ Builds and returns the LangChain job-search AgentExecutor with LangSmith tracing
 import os
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_openai_tools_agent
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder  # ✅ FIXED
 
 from integrations.tools import ALL_TOOLS
 from agent.prompts import JOB_SEARCH_SYSTEM_PROMPT
 
 
 def configure_langsmith():
-    key     = os.getenv("LANGCHAIN_API_KEY", "")
+    key = os.getenv("LANGCHAIN_API_KEY", "")
     project = os.getenv("LANGCHAIN_PROJECT", "job-search-agent")
     tracing = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
 
@@ -32,7 +32,7 @@ def build_agent(profile: dict, temperature: float = 0):
         temperature=temperature,
     )
 
-    # ✅ DO NOT pre-format profile
+    # ✅ FIX: include profile as a variable in prompt
     prompt = ChatPromptTemplate.from_messages([
         ("system", JOB_SEARCH_SYSTEM_PROMPT),
         MessagesPlaceholder("chat_history", optional=True),
@@ -55,4 +55,4 @@ def build_agent(profile: dict, temperature: float = 0):
         return_intermediate_steps=True,
     )
 
-    return executor, tracing_active
+    return executor, tracing_active  # ✅ FIXED typo
